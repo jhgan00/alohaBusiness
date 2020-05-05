@@ -1,0 +1,19 @@
+@import @import url(https://fonts.googleapis.com/css?family=Nanum+Myeongjo|Jua|Dokdo|Nanum+Pen+Script|Nanum+Gothic|Do+Hyeon);
+
+body {
+    font-family: 나눔스퀘어라운드 Light;
+    background-color: #1D2136;
+    color:#EBF8F9;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: 나눔스퀘어라운드 Light;
+    color:#EBF8F9;
+    background-color: #121522;
+    padding: 1.5%;
+
+}
+
+div{
+	vertical-align: middle;
+}
