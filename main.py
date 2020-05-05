@@ -1,3 +1,4 @@
+#-*- coding:utf-8 -*-
 # data handling
 import pandas as pd
 import numpy as np
@@ -21,12 +22,16 @@ from dash.dependencies import Input,Output
 import chart_studio.plotly as plotly
 import plotly.express as px
 import plotly.graph_objects as go
+import flask
+
+server = flask.Flask(__name__)
+app = dash.Dash(__name__, server=server)
 
 # def base RP function
-def calcRP(data, age, sex, weight, 생존률):
+def calcRP(data, age, sex, weight, survival):
     if (age=='상관없음')&(sex=='상관없음'):
         weightedSum = data.USE_AMT.mean()
-        return weightedSum*생존률
+        return weightedSum*survival
     elif (age=='상관없음'):
         target, nontarget = data[data.SEX_CD==sex], data[data.SEX_CD!=sex]
         n = 2
@@ -39,14 +44,14 @@ def calcRP(data, age, sex, weight, 생존률):
     target = target.USE_AMT.sum() * weight
     nontarget = nontarget.USE_AMT.sum() * (1-weight) / (n-1)
     weightedSum = target + nontarget
-    RP = weightedSum* 생존률
+    RP = weightedSum* survival
     return RP
 
 # def update RP function
 def updateRP(data, category, age, sex, weight):
     filtered_df = data[data.MCT_CAT_CD==category]
-    생존률 = 0.8
-    RPtable = filtered_df.groupby("DONG_CD").apply(calcRP, age=age, sex=sex, weight=weight, 생존률=생존률).reset_index().rename(columns={0:"RP"})
+    survival = 0.8
+    RPtable = filtered_df.groupby("DONG_CD").apply(calcRP, age=age, sex=sex, weight=weight, survival=survival).reset_index().rename(columns={0:"RP"})
     # minmax scaling
     RPtable["RP"] = MinMaxScaler((0,100)).fit_transform(RPtable.RP.values.reshape((-1,1)))
     return RPtable
@@ -65,7 +70,6 @@ print("Done")
 
 colors = {"background":"#17202A", "text":"#FFFFFF"}
 
-app = dash.Dash(__name__)
 
 app.layout = html.Div([
     html.H1('Aloha Dashboard | 서대문구/마포구 창업 의사결정 도우미'),
@@ -201,12 +205,12 @@ def update_RP(category, sex, age, weight):
 
 			bestlocation = RP[RP.RP==max(RP.RP)].DONG_CD.values[0]
 			bestscore = max(RP.RP)
+			
 			fig = go.Figure(
 				go.Bar(y=RP.sort_values("RP").DONG_CD, x=RP.sort_values("RP").RP, orientation='h'),
 				layout={"plot_bgcolor":colors['background'], 'paper_bgcolor':colors['background']})
-			fig.update_layout(
-				title = f"{category} 추천지수",
-				font=dict(family='NanumGothic',size=13, color=colors['text']))
+
+			fig.update_layout(title = "%s 업종의 추천지수" %category, font=dict(family='NanumGothic',size=13, color=colors['text']))
 
 			if (age=='상관없음')&(sex=='상관없음'):
 				agesextext=None
@@ -216,16 +220,16 @@ def update_RP(category, sex, age, weight):
 				else:
 					agesextext = "여성을 타게팅한"
 			elif sex == "상관없음":
-					agesextext = f"{age}세를 타게팅한"
+					agesextext = "%s 세를 타게팅한" %age
 			
 			else:
 				if sex=='M':
 					sextext = "남성"
 				else:
 					sextext = "여성"
-				agesextext = f"{age}세 {sextext}을 타게팅한"
-			loctext = f"{bestlocation} 입니다."	
-			cattext = f"{category} 업종의 추천 지역은"
+				agesextext = "%s 세 %s 을 타게팅한" %(age,sextext)
+			loctext = "%s 입니다." %bestlocation	
+			cattext = "%s 업종의 추천 지역은" %category
 
 		except:
 			googlemap.add_child(polygons)
@@ -244,7 +248,9 @@ def update_RP(category, sex, age, weight):
     )
 def update_plot(category,location):
 	if (category == None) or (location == None): title1, title2 = "매출액 추이","성별/연령대별 매출액"
-	else: title1, title2 = f'{location} {category} 업종 매출액 추이', f"{location} {category} 업종 성별/연령대별 매출액"
+	else:
+		title1 = '%s %s 업종 매출액 추이' %(location, category) 
+		title2 = "%s %s 업종 성별/연령대별 매출액" %(location, category)
 	
 	# filter data
 	filtered_df = tsplot[(tsplot.MCT_CAT_CD == category)]
@@ -296,4 +302,4 @@ def update_plot(category,location):
 	return fig1, fig2	
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8080, debug=False)
+	app.run_server(host='0.0.0.0', port=8080, debug=False)
